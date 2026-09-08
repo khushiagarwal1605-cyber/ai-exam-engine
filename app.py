@@ -61,7 +61,7 @@ def grade_answer(question: Dict[str, Any], user_answer: str,
     qtype = question.get("type")
     marks = question.get("marks", 0)
     model = question.get("full_model_answer", "")
-    
+
     if not user:
         return {
             "awarded": 0, "max": marks, "verdict": "No answer provided",
@@ -212,31 +212,31 @@ def sample_exam(source: str, total_marks: int) -> Dict[str, Any]:
 # ==========================================================
 def render_comparison(q: Dict[str, Any], user_answer: str, res: Dict[str, Any]):
     st.markdown("### 📊 Side-by-Side Comparison")
-    
+
     col1, col2 = st.columns(2)
-    
+
     with col1:
         st.markdown("#### 🧑‍🎓 Your Answer")
         if user_answer:
             st.markdown(user_answer)
         else:
             st.markdown("*No answer provided.*")
-        
+
         st.markdown("#### 📏 Score")
-        st.metric("Score", "%s / %s" % (res["awarded"], res["max"]), 
+        st.metric("Score", "%s / %s" % (res["awarded"], res["max"]),
                   "Verdict: %s" % res["verdict"])
-    
+
     with col2:
         st.markdown("#### 🤖 Model Answer (Ideal)")
         st.markdown(res["model_answer"])
-        
+
         st.markdown("#### 🔍 Gap Analysis")
         ga = res.get("gap_analysis")
         if ga:
             st.markdown("**Missing Key Points:** " + ", ".join(ga["missingKeyPoints"]) if ga["missingKeyPoints"] else "✅ None")
             st.markdown("**Vocabulary Gaps:** " + ", ".join(ga["vocabularyGaps"]) if ga["vocabularyGaps"] else "✅ None")
             st.markdown("**Word Count:** You: %d | Model: %d" % (ga["wordCountUser"], ga["wordCountModel"]))
-        
+
         st.markdown("#### 💡 Feedback")
         st.info(res["feedback"])
 
@@ -323,9 +323,9 @@ def main():
                 else:
                     qt = q.get("question_text")
                     st.write(qt if isinstance(qt, str) else str(qt))
-                
+
                 user = st.text_area("Your answer", key="ans_" + q["id"])
-                
+
                 if st.button("Grade & Compare", key="btn_" + q["id"]):
                     res = grade_answer(q, user, None)
                     render_comparison(q, user, res)
