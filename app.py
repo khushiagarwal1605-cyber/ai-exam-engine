@@ -389,3 +389,148 @@ def render_stress_tab(shelf):
                            data=json.dumps(report, indent=2),
                            file_name="stress_report.json",
                            mime="application/json")
+
+
+# ==========================================================
+# 9. PDF EXPORT (Day 12)
+# ==========================================================
+class ExamPDF(FPDF):
+    def header(self):
+        self.set_font("Arial", "B", 12)
+        self.cell(0, 10, "AI Exam Engine", 0, 1, "L")
+        self.set_font("Arial", "I", 8)
+        self.cell(0, 10, f"Generated: {datetime.now().strftime('%Y-%m-%d %H:%M')}", 0, 1, "R")
+        self.ln(5)
+
+    def footer(self):
+        self.set_y(-20)
+        self.set_font("Arial", "I", 8)
+        self.cell(0, 10, f"Page {{self.page_no()}}/{{nb()}}", 0, 0, "C")
+
+    def add_question(self, q: Dict[str, Any], total_marks: int):
+        self.set_font("Arial", "B", 12)
+        self.cell(0, 10, f"{q['id']} | {q['type']} | {q['marks']} mark(s)", 0, 1)
+        self.set_font("Arial", "", 11)
+        
+        # Context
+        if q.get("context_text"):
+            self.set_font("Arial", "I", 10)
+            self.multi_cell(0, 6, q["context_text"])
+            self.ln(2)
+        
+        # Question
+        qt = q.get("question_text")
+        if isinstance(qt, dict):
+            self.cell(0, 6, f"Assertion: {qt.get('assertion', '')}", 0, 1)
+            self.cell(0, 6, f"Reason: {qt.get('reason', '')}", 0, 1)
+        else:
+            self.multi_cell(0, 6, str(qt))
+        
+        # Options
+        if q.get("options"):
+            self.ln(2)
+            self.set_font("Arial", "", 11)
+            for i, opt in enumerate(q["options"]):
+                self.cell(0, 6, f"{chr(65+i)}. {opt}", 0, 1)
+            self.ln(4)
+        
+        # Source Reference
+        self.set_font("Arial", "I", 9)
+        self.set_text_color(100, 100, 100)
+        self.cell(0, 6, f"Source: {q.get('source_reference', '')}", 0, 1)
+        self.set_text_color(0, 0, 0)
+        self.ln(8)
+
+def generate_exam_pdf(exam: Dict[str, Any]) -> bytes:
+    pdf = ExamPDF()
+    pdf.add_page()
+    pdf.set_font("Arial", "B", 16)
+    pdf.cell(0, 10, "Exam Paper", 0, 1, "C")
+    pdf.set_font("Arial", "", 11)
+    meta = exam.get("exam_metadata", {})
+    pdf.multi_cell(0, 6, f"Source: {meta.get('source_document', '')}")
+    pdf.multi_cell(0, 6, f"Total Marks: {meta.get('total_marks', 0)}")
+    pdf.ln(10)
+    
+    for q in exam.get("questions", []):
+        pdf.add_question(q, meta.get("total_marks", 0))
+    
+    return pdf.output(dest="S").encode("latin-1")
+
+
+def generate_rubric_pdf(exam: Dict[str, Any]) -> bytes:
+    pdf = ExamPDF()
+    pdf.add_page()
+    pdf.set_font("Arial", "B", 16)
+    pdf.cell(0, 10, "Grading Rubric", 0, 1, "C")
+    pdf.ln(5)
+    meta = exam.get("exam_metadata", {})
+    pdf.multi_cell(0, 6, f"For: {meta.get('source_document', '')}")
+    pdf.ln(5)
+    
+    for q in exam.get("questions", []):
+        pdf.set_font("Arial", "B", 12)
+        pdf.cell(0, 10, f"{q['id']}: {q['type']}", 0, 1)
+        pdf.set_font("Arial", "", 11)
+        pdf.multi_cell(0, 6, f"Model Answer: {q.get('full_model_answer', '')}")
+        pdf.ln(2)
+        pdf.multi_cell(0, 6, f"Grading Notes: {q.get('grading_notes', '')}")
+        if q.get("key_points"):
+            pdf.multi_cell(0, 6, f"Key Points: {', '.join(q['key_points'])}")
+        if q.get("expected_keywords"):
+            pdf.multi_cell(0, 6, f"Expected Keywords: {', '.join(q['expected_keywords'])}")
+        pdf.ln(8)
+    
+    return pdf.output(dest="S").encode("latin-1")
+
+
+# ==========================================================
+# 10. EXPORT & SHARE TAB (Day 12)
+# ==========================================================
+def render_export_tab(shelf):
+    st.markdown("### 📥 Export & Share")
+    st.markdown("Download your exam as a clean PDF or share the rubric.")
+    
+    if not shelf["exams"]:
+        st.info("Generate an exam first to export.")
+        return
+    
+    exam_sel = st.selectbox("Select Exam",
+                            ["Exam %d (%d marks)" % (i+1, e["exam_metadata"]["total_marks"])
+                             for i, e in enumerate(shelf["exams"])])
+    
+    if exam_sel:
+        idx = int(exam_sel.split(" (")[0].split("Exam ")[1]) - 1
+        exam = shelf["exams"][idx]
+        
+        col1, col2 = st.columns(2)
+        with col1:
+            st.metric("Total Marks", exam["exam_metadata"]["total_marks"])
+            st.caption(f"Source: {exam['exam_metadata']['source_document']}")
+        
+        with col2:
+            st.metric("Questions", len(exam["questions"]))
+        
+        st.markdown("### 📄 Download Exam PDF")
+        pdf_bytes = generate_exam_pdf(exam)
+        st.download_button(
+            label="📥 Download Exam (PDF)",
+            data=pdf_bytes,
+            file_name="exam.pdf",
+            mime="application/pdf",
+            use_container_width=True
+        )
+        
+        st.markdown("### 📋 Download Rubric PDF")
+        rubric_bytes = generate_rubric_pdf(exam)
+        st.download_button(
+            label="📥 Download Rubric (PDF)",
+            data=rubric_bytes,
+            file_name="rubric.pdf",
+            mime="application/pdf",
+            use_container_width=True
+        )
+        
+        st.markdown("### 🔗 Share Link")
+        st.info("This app uses `st.session_state`. Links only work within the same session. "
+                "For permanent sharing, use the PDF export above.")
