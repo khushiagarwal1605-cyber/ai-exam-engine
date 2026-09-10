@@ -332,3 +332,60 @@ def main():
 
 if __name__ == "__main__":
     main()
+
+
+# ==========================================================
+# 8. STRESS TEST TAB (Day 11)
+# ==========================================================
+def render_stress_tab(shelf):
+    import tests
+    client = get_client()
+    if not client:
+        st.error("Set GROQ_API_KEY first.")
+        return
+
+    tracker = tests.QuotaTracker(st.session_state)
+    st.metric("Groq daily quota remaining", tracker.remaining())
+    if tracker.low():
+        st.warning("Under 50 requests left today. The suite uses 2 per run.")
+
+    if "pdf_text" not in st.session_state:
+        st.info("Upload a PDF in the Generate tab first.")
+        return
+
+    exam = shelf["exams"][-1] if shelf["exams"] else None
+    if exam is None:
+        st.info("Generate at least one exam first - we test real output, not samples.")
+        return
+
+    model_sel = st.selectbox("Model for refusal probe", GROQ_MODELS)
+
+    if st.button("🔬 Run full stress test suite", type="primary"):
+        results = tests.run_suite(
+            client, model_sel, st.session_state["pdf_text"],
+            exam, st.session_state.get("pdf_name", "document"),
+            lambda q, a, r=None: grade_answer(q, a, r))
+
+        passed = sum(1 for r in results if r["passed"])
+        st.subheader("Report: %d/%d passed" % (passed, len(results)))
+
+        for r in results:
+            icon = "✅" if r["passed"] else "❌"
+            st.markdown("%s **%s**" % (icon, r["name"]))
+            st.caption(r["detail"])
+
+        if passed == len(results):
+            st.success("Trusted-source engine verified. Safe to demo.")
+        else:
+            st.error("Failures above are the exact bugs to fix before release.")
+
+        report = {
+            "run_at": datetime.now(timezone.utc).isoformat(),
+            "document": st.session_state.get("pdf_name"),
+            "model": model_sel,
+            "passed": passed, "total": len(results),
+            "results": results}
+        st.download_button("📥 Download test report (JSON)",
+                           data=json.dumps(report, indent=2),
+                           file_name="stress_report.json",
+                           mime="application/json")
