@@ -1,5 +1,5 @@
 """Day 9-12 engine: Groq/Qwen, PDF reader, grounding, stress tests, PDF export.
-Imported by app.py. Reuses your existing Day 6 helpers."""
+Imported by app.py. Nothing here touches your existing Day 6 helpers."""
 import json, os, re
 from datetime import datetime, timezone
 from typing import Any, Dict, List, Optional, Tuple
@@ -316,6 +316,10 @@ class ExamPDF(FPDF):
         self.ln(6)
 
 
+def _safe(pdf_bytes: bytes) -> bytes:
+    return pdf_bytes
+
+
 def generate_exam_pdf(exam) -> bytes:
     pdf = ExamPDF()
     pdf.alias_nb_pages()
@@ -329,7 +333,7 @@ def generate_exam_pdf(exam) -> bytes:
     pdf.ln(6)
     for q in exam.get("questions", []):
         pdf.add_question(q)
-    return bytes(pdf.output())
+    return _safe(bytes(pdf.output()))
 
 
 def generate_rubric_pdf(exam) -> bytes:
@@ -344,14 +348,4 @@ def generate_rubric_pdf(exam) -> bytes:
     pdf.ln(4)
     for q in exam.get("questions", []):
         pdf.set_font("Helvetica", "B", 12)
-        pdf.cell(0, 9, "%s: %s" % (q.get("id"), q.get("type")), 0, 1)
-        pdf.set_font("Helvetica", "", 11)
-        pdf.multi_cell(0, 6, "Model Answer: %s" % q.get("full_model_answer", ""))
-        pdf.ln(1)
-        pdf.multi_cell(0, 6, "Grading Notes: %s" % q.get("grading_notes", ""))
-        if q.get("key_points"):
-            pdf.multi_cell(0, 6, "Key Points: %s" % ", ".join(q["key_points"]))
-        if q.get("expected_keywords"):
-            pdf.multi_cell(0, 6, "Expected Keywords: %s" % ", ".join(q["expected_keywords"]))
-        pdf.ln(6)
-    return bytes(pdf.output())
+        pdf.cell(0, 9, "%s: %s" % (q.get("id"), q.get("type")), 0
