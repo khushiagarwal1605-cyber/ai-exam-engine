@@ -6,7 +6,8 @@ from pypdf import PdfReader
 from openai import OpenAI
 from fpdf import FPDF
 
-import engine, re, base64
+import engine
+from engine import *, re, base64
 from datetime import datetime, timezone
 from typing import Any, Dict, List, Optional, Tuple
 from fpdf import FPDF
