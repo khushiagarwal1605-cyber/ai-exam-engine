@@ -20,6 +20,20 @@ from pypdf import PdfReader
 from openai import OpenAI
 from fpdf import FPDF
 
+import engine, os, re
+from datetime import datetime, timezone
+from typing import Any, Dict, List, Optional, Tuple
+from pypdf import PdfReader
+from openai import OpenAI
+from fpdf import FPDF
+
+import engine, os, re
+from datetime import datetime, timezone
+from typing import Any, Dict, List, Optional, Tuple
+from pypdf import PdfReader
+from openai import OpenAI
+from fpdf import FPDF
+
 import engine
 from engine import *, re, base64
 from datetime import datetime, timezone
