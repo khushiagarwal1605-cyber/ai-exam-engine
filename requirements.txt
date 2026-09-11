@@ -1,4 +1,2 @@
 streamlit
-pypdf
-openai
-fpdf2
+fpdf
